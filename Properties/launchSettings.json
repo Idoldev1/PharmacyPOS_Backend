@@ -11,8 +11,8 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "ConnectionStrings__DefaultConnection": "Server=PSALMSON\\SQLEXPRESS;Database=PHARMACYPOSDB;Trusted_Connection=true;MultipleActiveResultSets=true;TrustServerCertificate=true",
         "JwtSettings__SecretKey": "YourSuperSecretKeyForJWTTokenGeneration12345",
-        "JwtSettings__Issuer": "HRMS",
-        "JwtSettings__Audience": "HRMSUsers",
+        "JwtSettings__Issuer": "PHARMACYPOS",
+        "JwtSettings__Audience": "pos-client",
         "ClientSettings__BaseUrl": "http://localhost:3000",
         "ClientSettings__AllowedOrigins": "http://localhost:3000"
       }
