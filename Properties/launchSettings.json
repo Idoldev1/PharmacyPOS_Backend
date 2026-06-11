@@ -13,8 +13,8 @@
         "JwtSettings__SecretKey": "YourSuperSecretKeyForJWTTokenGeneration12345",
         "JwtSettings__Issuer": "PHARMACYPOS",
         "JwtSettings__Audience": "pos-client",
-        "ClientSettings__BaseUrl": "http://localhost:3000",
-        "ClientSettings__AllowedOrigins": "http://localhost:3000"
+        "ClientSettings__BaseUrl": "http://localhost:5173",
+        "ClientSettings__AllowedOrigins": "http://localhost:5173"
       }
     }
   }
