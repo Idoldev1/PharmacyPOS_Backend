@@ -13,3 +13,11 @@ public class PasswordResetEntry
     public string UserId { get; set; } = null!;
     public DateTime ExpiresAt { get; set; }
 }
+
+public class OtpEntry
+{
+    public int Id { get; set; }
+    public string UserId { get; set; } = null!;
+    public string Code { get; set; } = null!;
+    public DateTime ExpiresAt { get; set; }
+}

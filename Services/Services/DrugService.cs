@@ -7,24 +7,29 @@ namespace POS.API.Services.Services;
 public class DrugService : IDrugService
 {
     private readonly IDrugRepository _drugRepo;
+    private readonly IBrandRepository _brandRepo;
     private readonly ILogger<DrugService> _logger;
 
-    public DrugService(IDrugRepository drugRepo, ILogger<DrugService> logger)
+    public DrugService(IDrugRepository drugRepo, IBrandRepository brandRepo, ILogger<DrugService> logger)
     {
         _drugRepo = drugRepo;
+        _brandRepo = brandRepo;
         _logger = logger;
     }
 
-    public async Task<OperationResult<DrugListResult>> GetDrugsAsync(string? query, string? category, int page, int pageSize, string branchId)
+    public async Task<OperationResult<DrugListResult>> GetDrugsAsync(string? query, string? category, Guid? brandId, int page, int pageSize, string branchId)
     {
         _logger.LogInformation("Fetching drugs for branch {BranchId}, query {Query}", branchId, query);
-        var (items, total) = await _drugRepo.GetPagedAsync(query, category, page, pageSize, branchId);
+        var (items, total) = await _drugRepo.GetPagedAsync(query, category, brandId, page, pageSize, branchId);
+        var (totalValue, totalWorth) = await _drugRepo.GetInventoryTotalsAsync(branchId);
         return OperationResult<DrugListResult>.Ok(new DrugListResult
         {
             Items = items.Select(ToDto).ToList(),
             Total = total,
             Page = page,
-            PageSize = pageSize
+            PageSize = pageSize,
+            TotalValue = totalValue,
+            TotalWorth = totalWorth
         });
     }
 
@@ -45,6 +50,9 @@ public class DrugService : IDrugService
     public async Task<OperationResult<DrugDto>> CreateAsync(string branchId, CreateDrugRequest request)
     {
         _logger.LogInformation("Creating drug {Name} for branch {BranchId}", request.Name, branchId);
+        if (await _brandRepo.GetByIdAsync(request.BrandId) is null)
+            return OperationResult<DrugDto>.Fail("Brand not found.", 404);
+
         var drug = new Drug
         {
             Name = request.Name,
@@ -60,10 +68,40 @@ public class DrugService : IDrugService
             SellingPrice = request.SellingPrice,
             NafdacNo = request.NafdacNo,
             SupplierId = request.SupplierId,
+            BrandId = request.BrandId,
             BranchId = branchId
         };
         var saved = await _drugRepo.AddAsync(drug);
+        saved = await _drugRepo.GetByIdAsync(saved.Id) ?? saved;
         return OperationResult<DrugDto>.Ok(ToDto(saved));
+    }
+
+    public async Task<OperationResult<DrugDto>> UpdateAsync(Guid id, UpdateDrugRequest request)
+    {
+        var drug = await _drugRepo.GetByIdAsync(id);
+        if (drug is null) return OperationResult<DrugDto>.Fail("Drug not found.", 404);
+        if (await _brandRepo.GetByIdAsync(request.BrandId) is null)
+            return OperationResult<DrugDto>.Fail("Brand not found.", 404);
+
+        drug.Name = request.Name;
+        drug.GenericName = request.GenericName;
+        drug.Strength = request.Strength;
+        drug.Form = request.Form;
+        drug.Category = request.Category;
+        drug.BatchNo = request.BatchNo;
+        drug.ExpiryDate = request.ExpiryDate;
+        drug.ReorderLevel = request.ReorderLevel;
+        drug.UnitCost = request.UnitCost;
+        drug.SellingPrice = request.SellingPrice;
+        drug.NafdacNo = request.NafdacNo;
+        drug.SupplierId = request.SupplierId;
+        drug.BrandId = request.BrandId;
+        drug.UpdatedAt = DateTime.UtcNow;
+
+        await _drugRepo.UpdateAsync(drug);
+        drug = await _drugRepo.GetByIdAsync(id) ?? drug;
+        _logger.LogInformation("Drug {DrugId} updated", id);
+        return OperationResult<DrugDto>.Ok(ToDto(drug));
     }
 
     public async Task<OperationResult> UpdateStockAsync(Guid id, int quantity)
@@ -98,10 +136,14 @@ public class DrugService : IDrugService
         BatchNo = d.BatchNo,
         ExpiryDate = d.ExpiryDate,
         StockQty = d.StockQty,
+        ReservedQty = d.ReservedQty,
+        AvailableQty = d.StockQty - d.ReservedQty,
         ReorderLevel = d.ReorderLevel,
         UnitCost = d.UnitCost,
         SellingPrice = d.SellingPrice,
         NafdacNo = d.NafdacNo,
+        BrandId = d.BrandId,
+        BrandName = d.Brand.Name,
         SupplierId = d.SupplierId,
         BranchId = d.BranchId,
         Status = ComputeStatus(d),

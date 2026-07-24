@@ -28,7 +28,7 @@ public class SaleRepository : Repository<Sale, Guid>, ISaleRepository
     {
         var today = DateTime.UtcNow.Date;
         return await _dbSet.Include(s => s.Items)
-            .Where(s => s.BranchId == branchId && s.CreatedAt >= today && s.Status == "completed")
+            .Where(s => s.BranchId == branchId && s.CreatedAt >= today && s.Status == "Completed")
             .ToListAsync();
     }
 

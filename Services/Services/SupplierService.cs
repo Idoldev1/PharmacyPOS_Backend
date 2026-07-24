@@ -78,6 +78,7 @@ public class SupplierService : ISupplierService
         {
             DrugId = i.DrugId,
             DrugName = i.DrugName,
+            BrandName = i.BrandName,
             Quantity = i.Quantity,
             UnitCost = i.UnitCost,
             Subtotal = i.UnitCost * i.Quantity
@@ -148,6 +149,7 @@ public class SupplierService : ISupplierService
             Id = i.Id,
             DrugId = i.DrugId,
             DrugName = i.DrugName,
+            BrandName = i.BrandName,
             Quantity = i.Quantity,
             UnitCost = i.UnitCost,
             Subtotal = i.Subtotal

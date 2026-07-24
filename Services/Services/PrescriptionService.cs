@@ -15,9 +15,9 @@ public class PrescriptionService : IPrescriptionService
         _logger = logger;
     }
 
-    public async Task<OperationResult<PrescriptionListResult>> GetPrescriptionsAsync(string? status, int page, int pageSize, string branchId)
+    public async Task<OperationResult<PrescriptionListResult>> GetPrescriptionsAsync(string? status, string? query, int page, int pageSize, string branchId)
     {
-        var (items, total) = await _rxRepo.GetPagedAsync(status, page, pageSize, branchId);
+        var (items, total) = await _rxRepo.GetPagedAsync(status, query, page, pageSize, branchId);
         return OperationResult<PrescriptionListResult>.Ok(new PrescriptionListResult
         {
             Items = items.Select(ToDto).ToList(),
@@ -73,9 +73,9 @@ public class PrescriptionService : IPrescriptionService
     {
         var rx = await _rxRepo.GetByIdAsync(id);
         if (rx is null) return OperationResult.Fail("Prescription not found.", 404);
-        if (rx.Status != "pending") return OperationResult.Fail("Only pending prescriptions can be verified.");
+        if (rx.Status != "Pending") return OperationResult.Fail("Only pending prescriptions can be verified.");
 
-        rx.Status = "verified";
+        rx.Status = "Verified";
         rx.VerifiedBy = userId;
         rx.VerifiedAt = DateTime.UtcNow;
         await _rxRepo.UpdateAsync(rx);
@@ -87,9 +87,9 @@ public class PrescriptionService : IPrescriptionService
     {
         var rx = await _rxRepo.GetByIdAsync(id);
         if (rx is null) return OperationResult.Fail("Prescription not found.", 404);
-        if (rx.Status != "verified") return OperationResult.Fail("Only verified prescriptions can be dispensed.");
+        if (rx.Status != "Verified") return OperationResult.Fail("Only verified prescriptions can be dispensed.");
 
-        rx.Status = "dispensed";
+        rx.Status = "Dispensed";
         rx.DispensedBy = userId;
         rx.DispensedAt = DateTime.UtcNow;
         await _rxRepo.UpdateAsync(rx);
@@ -101,9 +101,9 @@ public class PrescriptionService : IPrescriptionService
     {
         var rx = await _rxRepo.GetByIdAsync(id);
         if (rx is null) return OperationResult.Fail("Prescription not found.", 404);
-        if (rx.Status == "dispensed") return OperationResult.Fail("Dispensed prescriptions cannot be flagged.");
+        if (rx.Status == "Dispensed") return OperationResult.Fail("Dispensed prescriptions cannot be flagged.");
 
-        rx.Status = "flagged";
+        rx.Status = "Flagged";
         rx.FlagReason = reason;
         await _rxRepo.UpdateAsync(rx);
         _logger.LogInformation("Prescription {RxId} flagged: {Reason}", id, reason);

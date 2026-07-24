@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using POS.API.Authorization;
+using POS.API.Constants;
 using POS.API.Models;
 using POS.API.Services.Contracts;
 
@@ -21,15 +23,17 @@ public class PrescriptionsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetPrescriptions([FromQuery] string? status, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    [RequirePermission(Permissions.Prescriptions.View)]
+    public async Task<IActionResult> GetPrescriptions([FromQuery] string? status, [FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var branchId = User.FindFirstValue("branchId") ?? "hq";
         _logger.LogInformation("GET /api/prescriptions called for branch {BranchId}", branchId);
-        var result = await _prescriptionService.GetPrescriptionsAsync(status, page, pageSize, branchId);
+        var result = await _prescriptionService.GetPrescriptionsAsync(status, q, page, pageSize, branchId);
         return Ok(result.Payload);
     }
 
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.Prescriptions.View)]
     public async Task<IActionResult> GetById(Guid id)
     {
         _logger.LogInformation("GET /api/prescriptions/{RxId} called", id);
@@ -39,6 +43,7 @@ public class PrescriptionsController : ControllerBase
     }
 
     [HttpPost]
+    [RequirePermission(Permissions.Prescriptions.Create)]
     public async Task<IActionResult> Create([FromBody] CreatePrescriptionRequest request)
     {
         var branchId = User.FindFirstValue("branchId") ?? "hq";
@@ -48,7 +53,9 @@ public class PrescriptionsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Payload!.Id }, result.Payload);
     }
 
+    // Approve/verify: Chief Pharmacist and Admin only
     [HttpPost("{id:guid}/verify")]
+    [RequirePermission(Permissions.Prescriptions.Approve)]
     public async Task<IActionResult> Verify(Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -59,6 +66,7 @@ public class PrescriptionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/dispense")]
+    [RequirePermission(Permissions.Prescriptions.Dispense)]
     public async Task<IActionResult> Dispense(Guid id)
     {
         var userId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
@@ -69,6 +77,7 @@ public class PrescriptionsController : ControllerBase
     }
 
     [HttpPost("{id:guid}/flag")]
+    [RequirePermission(Permissions.Prescriptions.Create, Permissions.Prescriptions.Approve)]
     public async Task<IActionResult> Flag(Guid id, [FromBody] FlagPrescriptionRequest request)
     {
         _logger.LogInformation("POST /api/prescriptions/{RxId}/flag called", id);

@@ -16,7 +16,8 @@ public class PatientRepository : Repository<Patient, Guid>, IPatientRepository
             q = q.Where(p =>
                 p.FirstName.Contains(query) ||
                 p.LastName.Contains(query) ||
-                p.Phone.Contains(query));
+                p.Phone.Contains(query) ||
+                p.Id.ToString().Contains(query));
         var total = await q.CountAsync();
         var items = await q.OrderBy(p => p.LastName).ThenBy(p => p.FirstName)
             .Skip((page - 1) * pageSize).Take(pageSize).ToListAsync();

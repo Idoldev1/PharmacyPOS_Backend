@@ -32,7 +32,7 @@ public class DashboardController : ControllerBase
 
         var todaySalesResult = await _saleService.GetTodaySalesAsync(branchId);
         var lowStockResult = await _drugService.GetLowStockAsync(branchId);
-        var pendingRxCount = await _prescriptionService.CountByStatusAsync("pending", branchId);
+        var pendingRxCount = await _prescriptionService.CountByStatusAsync("Pending", branchId);
 
         var todaySales = todaySalesResult.Payload ?? [];
         var lowStockDrugs = lowStockResult.Payload ?? [];

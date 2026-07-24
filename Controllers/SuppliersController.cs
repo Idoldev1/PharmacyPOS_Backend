@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using POS.API.Authorization;
+using POS.API.Constants;
 using POS.API.Models;
 using POS.API.Services.Contracts;
 
@@ -23,6 +25,7 @@ public class SuppliersController : ControllerBase
     private string BranchId => User.FindFirstValue("branchId") ?? "hq";
 
     [HttpGet]
+    [RequirePermission(Permissions.Suppliers.View)]
     public async Task<IActionResult> GetAll()
     {
         _logger.LogInformation("GET /api/suppliers called for branch {BranchId}", BranchId);
@@ -31,6 +34,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.Suppliers.View)]
     public async Task<IActionResult> GetById(Guid id)
     {
         _logger.LogInformation("GET /api/suppliers/{SupplierId} called", id);
@@ -40,6 +44,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPost]
+    [RequirePermission(Permissions.Suppliers.Create)]
     public async Task<IActionResult> Create([FromBody] CreateSupplierRequest request)
     {
         _logger.LogInformation("POST /api/suppliers called for branch {BranchId}, name {SupplierName}", BranchId, request.Name);
@@ -49,6 +54,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpGet("{id:guid}/orders")]
+    [RequirePermission(Permissions.Suppliers.ManageOrders)]
     public async Task<IActionResult> GetOrders(Guid id)
     {
         _logger.LogInformation("GET /api/suppliers/{SupplierId}/orders called", id);
@@ -58,6 +64,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPost("{id:guid}/orders")]
+    [RequirePermission(Permissions.Suppliers.ManageOrders)]
     public async Task<IActionResult> CreateOrder(Guid id, [FromBody] CreatePurchaseOrderRequest request)
     {
         _logger.LogInformation("POST /api/suppliers/{SupplierId}/orders called for branch {BranchId}, {ItemCount} item(s)", id, BranchId, request.Items.Count);
@@ -67,6 +74,7 @@ public class SuppliersController : ControllerBase
     }
 
     [HttpPost("orders/{orderId:guid}/send")]
+    [RequirePermission(Permissions.Suppliers.ManageOrders)]
     public async Task<IActionResult> SendOrder(Guid orderId)
     {
         _logger.LogInformation("POST /api/suppliers/orders/{OrderId}/send called", orderId);

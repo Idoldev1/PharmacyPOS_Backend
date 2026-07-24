@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using POS.API.Authorization;
+using POS.API.Constants;
 using POS.API.Models;
 using POS.API.Services.Contracts;
 
@@ -20,16 +22,19 @@ public class DrugsController : ControllerBase
         _logger = logger;
     }
 
+    // Cashier gets ViewStockOnly during sales; all inventory roles get View
     [HttpGet]
-    public async Task<IActionResult> GetDrugs([FromQuery] string? query, [FromQuery] string? category, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
+    [RequirePermission(Permissions.Inventory.View, Permissions.Inventory.ViewStockOnly)]
+    public async Task<IActionResult> GetDrugs([FromQuery] string? query, [FromQuery] string? category, [FromQuery] Guid? brandId, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var branchId = User.FindFirstValue("branchId") ?? "hq";
         _logger.LogInformation("GET /api/drugs called for branch {BranchId}", branchId);
-        var result = await _drugService.GetDrugsAsync(query, category, page, pageSize, branchId);
+        var result = await _drugService.GetDrugsAsync(query, category, brandId, page, pageSize, branchId);
         return Ok(result.Payload);
     }
 
     [HttpGet("low-stock")]
+    [RequirePermission(Permissions.Inventory.View)]
     public async Task<IActionResult> GetLowStock()
     {
         var branchId = User.FindFirstValue("branchId") ?? "hq";
@@ -39,6 +44,7 @@ public class DrugsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.Inventory.View, Permissions.Inventory.ViewStockOnly)]
     public async Task<IActionResult> GetById(Guid id)
     {
         _logger.LogInformation("GET /api/drugs/{DrugId} called", id);
@@ -47,7 +53,9 @@ public class DrugsController : ControllerBase
         return Ok(result.Payload);
     }
 
+    // Adding new drugs to catalog: Chief Pharmacist, Admin
     [HttpPost]
+    [RequirePermission(Permissions.Inventory.AddStock)]
     public async Task<IActionResult> Create([FromBody] CreateDrugRequest request)
     {
         var branchId = User.FindFirstValue("branchId") ?? "hq";
@@ -57,7 +65,20 @@ public class DrugsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Payload!.Id }, result.Payload);
     }
 
+    // Editing drug details (incl. brand): Chief Pharmacist, Admin
+    [HttpPut("{id:guid}")]
+    [RequirePermission(Permissions.Inventory.EditStock)]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDrugRequest request)
+    {
+        _logger.LogInformation("PUT /api/drugs/{DrugId} called", id);
+        var result = await _drugService.UpdateAsync(id, request);
+        if (!result.Success) return StatusCode(result.StatusCode, new { error = result.ErrorMessage });
+        return Ok(result.Payload);
+    }
+
+    // Adjusting stock levels: Chief Pharmacist, Admin
     [HttpPatch("{id:guid}/stock")]
+    [RequirePermission(Permissions.Inventory.AdjustStock)]
     public async Task<IActionResult> UpdateStock(Guid id, [FromBody] UpdateStockRequest request)
     {
         _logger.LogInformation("PATCH /api/drugs/{DrugId}/stock called", id);
@@ -66,7 +87,9 @@ public class DrugsController : ControllerBase
         return Ok(new { success = true });
     }
 
+    // Deleting drug records: Admin only
     [HttpDelete("{id:guid}")]
+    [RequirePermission(Permissions.Inventory.EditStock)]
     public async Task<IActionResult> Delete(Guid id)
     {
         _logger.LogInformation("DELETE /api/drugs/{DrugId} called", id);

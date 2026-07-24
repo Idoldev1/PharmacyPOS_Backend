@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using POS.API.Authorization;
+using POS.API.Constants;
 using POS.API.Models;
 using POS.API.Services.Contracts;
 
@@ -20,7 +22,9 @@ public class PatientsController : ControllerBase
         _logger = logger;
     }
 
+    // Cashier gets ViewBasic; all other clinical roles get View
     [HttpGet]
+    [RequirePermission(Permissions.Patients.View, Permissions.Patients.ViewBasic)]
     public async Task<IActionResult> GetPatients([FromQuery] string? q, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
     {
         var branchId = User.FindFirstValue("branchId") ?? "hq";
@@ -30,6 +34,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpGet("{id:guid}")]
+    [RequirePermission(Permissions.Patients.View, Permissions.Patients.ViewBasic)]
     public async Task<IActionResult> GetById(Guid id)
     {
         _logger.LogInformation("GET /api/patients/{PatientId} called", id);
@@ -39,6 +44,7 @@ public class PatientsController : ControllerBase
     }
 
     [HttpPost]
+    [RequirePermission(Permissions.Patients.Create)]
     public async Task<IActionResult> Create([FromBody] CreatePatientRequest request)
     {
         var branchId = User.FindFirstValue("branchId") ?? "hq";
@@ -48,7 +54,9 @@ public class PatientsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = result.Payload!.Id }, result.Payload);
     }
 
+    // History: clinical roles only — Cashier is explicitly blocked
     [HttpGet("{id:guid}/history")]
+    [RequirePermission(Permissions.Patients.ViewHistory)]
     public async Task<IActionResult> GetHistory(Guid id)
     {
         _logger.LogInformation("GET /api/patients/{PatientId}/history called", id);

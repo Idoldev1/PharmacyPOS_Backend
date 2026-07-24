@@ -10,7 +10,7 @@ public class Prescription
     public string? DoctorLicense { get; set; }
     public string? HospitalName { get; set; }
     public DateTime PrescribedDate { get; set; } = DateTime.UtcNow;
-    public string Status { get; set; } = "pending";
+    public string Status { get; set; } = "Pending";
     public string? FlagReason { get; set; }
     public string? VerifiedBy { get; set; }
     public string? DispensedBy { get; set; }

@@ -24,7 +24,7 @@ public class ReportsService : IReportsService
         _logger.LogInformation("Fetching reports summary for branch {BranchId}", branchId);
         var today = DateTime.UtcNow.Date;
         var todaySales = await _db.Sales
-            .Where(s => s.BranchId == branchId && s.CreatedAt >= today && s.Status == "completed")
+            .Where(s => s.BranchId == branchId && s.CreatedAt >= today && s.Status == "Completed")
             .ToListAsync();
 
         var todayRevenue = todaySales.Sum(s => s.Total);
@@ -38,9 +38,9 @@ public class ReportsService : IReportsService
         var monthStart = new DateTime(today.Year, today.Month, 1);
         var topDrug = await _db.SaleItems
             .Join(_db.Sales, i => i.SaleId, s => s.Id, (i, s) => new { i, s })
-            .Where(x => x.s.BranchId == branchId && x.s.CreatedAt >= monthStart && x.s.Status == "completed")
-            .GroupBy(x => x.i.DrugName)
-            .Select(g => new { Name = g.Key, Units = g.Sum(x => x.i.Quantity) })
+            .Where(x => x.s.BranchId == branchId && x.s.CreatedAt >= monthStart && x.s.Status == "Completed")
+            .GroupBy(x => new { x.i.DrugName, x.i.BrandName })
+            .Select(g => new { g.Key.DrugName, g.Key.BrandName, Units = g.Sum(x => x.i.Quantity) })
             .OrderByDescending(x => x.Units)
             .FirstOrDefaultAsync();
 
@@ -53,7 +53,8 @@ public class ReportsService : IReportsService
             TodayTransactions = todayCount,
             AvgSaleValue = avgSale,
             LowStockCount = lowStock,
-            TopSellingDrug = topDrug?.Name ?? "—",
+            TopSellingDrug = topDrug?.DrugName ?? "—",
+            TopSellingBrand = topDrug?.BrandName,
             TopSellingUnits = topDrug?.Units ?? 0
         });
     }
@@ -70,7 +71,7 @@ public class ReportsService : IReportsService
             var day = weekStart.AddDays(i);
             var next = day.AddDays(1);
             var rev = await _db.Sales
-                .Where(s => s.BranchId == branchId && s.CreatedAt >= day && s.CreatedAt < next && s.Status == "completed")
+                .Where(s => s.BranchId == branchId && s.CreatedAt >= day && s.CreatedAt < next && s.Status == "Completed")
                 .SumAsync(s => (decimal?)s.Total) ?? 0;
             points.Add(new WeeklyRevenuePoint
             {
@@ -87,7 +88,7 @@ public class ReportsService : IReportsService
         _logger.LogInformation("Fetching payment breakdown for branch {BranchId}", branchId);
         var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var groups = await _db.Sales
-            .Where(s => s.BranchId == branchId && s.CreatedAt >= monthStart && s.Status == "completed")
+            .Where(s => s.BranchId == branchId && s.CreatedAt >= monthStart && s.Status == "Completed")
             .GroupBy(s => s.PaymentMethod)
             .Select(g => new { Method = g.Key, Count = g.Count() })
             .ToListAsync();
@@ -118,11 +119,12 @@ public class ReportsService : IReportsService
         var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1);
         var top = await _db.SaleItems
             .Join(_db.Sales, i => i.SaleId, s => s.Id, (i, s) => new { i, s })
-            .Where(x => x.s.BranchId == branchId && x.s.CreatedAt >= monthStart && x.s.Status == "completed")
-            .GroupBy(x => x.i.DrugName)
+            .Where(x => x.s.BranchId == branchId && x.s.CreatedAt >= monthStart && x.s.Status == "Completed")
+            .GroupBy(x => new { x.i.DrugName, x.i.BrandName })
             .Select(g => new TopDrugEntry
             {
-                Name = g.Key,
+                Name = g.Key.DrugName,
+                Brand = g.Key.BrandName,
                 Units = g.Sum(x => x.i.Quantity),
                 Revenue = g.Sum(x => x.i.Subtotal)
             })

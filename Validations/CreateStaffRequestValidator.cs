@@ -1,16 +1,22 @@
 using FluentValidation;
+using POS.API.Constants;
 using POS.API.Models;
 
 namespace POS.API.Validations;
 
-public class SignupRequestValidator : AbstractValidator<SignupRequest>
+public class CreateStaffRequestValidator : AbstractValidator<CreateStaffRequest>
 {
-    public SignupRequestValidator()
+    public CreateStaffRequestValidator()
     {
+        RuleFor(x => x.Email)
+            .NotEmpty().WithMessage("Email is required.")
+            .EmailAddress().WithMessage("A valid email address is required.")
+            .MaximumLength(100).WithMessage("Email must not exceed 100 characters.");
+
         RuleFor(x => x.Username)
             .NotEmpty().WithMessage("Username is required.")
             .Length(3, 20).WithMessage("Username must be between 3 and 20 characters.")
-            .Matches(@"^[a-zA-Z0-9_-]+$").WithMessage("Username can only contain alphanumeric characters, hyphens, and underscores.");
+            .Matches(@"^[a-zA-Z0-9_$]+$").WithMessage("Username can only contain letters, numbers, underscores (_), and dollar signs ($).");
 
         RuleFor(x => x.Password)
             .NotEmpty().WithMessage("Password is required.")
@@ -26,11 +32,6 @@ public class SignupRequestValidator : AbstractValidator<SignupRequest>
 
         RuleFor(x => x.Role)
             .NotEmpty().WithMessage("Role is required.")
-            .Must(x => new[] { "admin", "pharmacist", "cashier", "manager" }.Contains(x.ToLower()))
-            .WithMessage("Role must be one of: admin, pharmacist, cashier, manager.");
-
-        RuleFor(x => x.BranchId)
-            .NotEmpty().WithMessage("Branch ID is required.")
-            .Length(1, 50).WithMessage("Branch ID must be between 1 and 50 characters.");
+            .Must(Roles.IsValid).WithMessage($"Role must be one of: {string.Join(", ", Roles.All)}.");
     }
 }

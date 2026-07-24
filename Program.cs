@@ -13,6 +13,7 @@ using POS.API.Repositories.Implementation;
 using POS.API.Services.Services;
 using POS.API.Middleware;
 using POS.API.Validations;
+using POS.API.Constants;
 using System.Text.Json.Serialization;
 using FluentValidation.AspNetCore;
 using Microsoft.OpenApi.Models;
@@ -121,15 +122,23 @@ builder.Services.AddScoped<IReportsService, ReportsService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IPasswordResetRepository, PasswordResetRepository>();
+builder.Services.AddScoped<IOtpRepository, OtpRepository>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<IDrugRepository, DrugRepository>();
+builder.Services.AddScoped<IBrandRepository, BrandRepository>();
+builder.Services.AddScoped<IBrandService, BrandService>();
 builder.Services.AddScoped<ISaleRepository, SaleRepository>();
+builder.Services.AddScoped<IPendingSaleRepository, PendingSaleRepository>();
 builder.Services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDrugService, DrugService>();
 builder.Services.AddScoped<ISaleService, SaleService>();
 builder.Services.AddScoped<IPrescriptionService, PrescriptionService>();
+builder.Services.AddHostedService<PendingSaleExpiryService>();
 
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("Jwt"));
+builder.Services.Configure<EmailSettings>(builder.Configuration.GetSection("Email"));
+builder.Services.Configure<SalesSettings>(builder.Configuration.GetSection("Sales"));
 
 var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
 var key = Encoding.UTF8.GetBytes(jwtSettings.Key);
@@ -172,6 +181,55 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// One-off bootstrap: `dotnet POS.API.dll seed-admin` creates the first Admin user
+// from env vars, then exits without starting the web server. Safe to run against
+// prod more than once — it no-ops if the username already exists.
+
+// var seedAdmin = Environment.GetEnvironmentVariable("SEED_ADMIN")?.ToLowerInvariant();
+// if (args.Contains("seed-admin") || seedAdmin == "true")
+// {
+//     using var seedScope = app.Services.CreateScope();
+//     var userManager = seedScope.ServiceProvider.GetRequiredService<UserManager<UserRecord>>();
+
+//     string RequireEnv(string name) =>
+//         Environment.GetEnvironmentVariable(name)
+//         ?? throw new InvalidOperationException($"{name} environment variable is required for seed-admin.");
+
+//     var username = RequireEnv("SEED_ADMIN_USERNAME");
+//     var email = RequireEnv("SEED_ADMIN_EMAIL");
+//     var password = RequireEnv("SEED_ADMIN_PASSWORD");
+//     var branchId = RequireEnv("SEED_ADMIN_BRANCHID");
+
+//     if (await userManager.FindByNameAsync(username) is not null)
+//     {
+//         Log.Information("seed-admin: user {Username} already exists, nothing to do.", username);
+//         //return;
+//     }
+
+//     var admin = new UserRecord
+//     {
+//         UserName = username,
+//         Email = email,
+//         NormalizedEmail = email.ToUpperInvariant(),
+//         FirstName = "System",
+//         LastName = "Admin",
+//         Role = Roles.Admin,
+//         BranchId = branchId
+//     };
+
+//     var result = await userManager.CreateAsync(admin, password);
+//     if (!result.Succeeded)
+//     {
+//         foreach (var error in result.Errors)
+//             Log.Error("seed-admin failed: {Code} - {Description}", error.Code, error.Description);
+//         Environment.ExitCode = 1;
+//         return;
+//     }
+
+//     Log.Information("seed-admin: created Admin user {Username} for branch {BranchId}.", username, branchId);
+//     //return;
+// }
 
 // if (app.Environment.IsDevelopment())
 // {

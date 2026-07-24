@@ -1,9 +1,8 @@
 namespace POS.API.Models;
 
-public class CreateSaleRequest
+public class InitiateSaleRequest
 {
     public List<CreateSaleItem> Items { get; set; } = [];
-    public string PaymentMethod { get; set; } = null!;
     public decimal Discount { get; set; } = 0;
     public string? PatientId { get; set; }
 }
@@ -14,17 +13,49 @@ public class CreateSaleItem
     public int Quantity { get; set; }
 }
 
+public class CompleteSaleRequest
+{
+    public string PaymentMethod { get; set; } = null!;
+}
+
+public class PendingSaleDto
+{
+    public Guid Id { get; set; }
+    public string Code { get; set; } = null!;
+    public string? PatientId { get; set; }
+    public decimal Subtotal { get; set; }
+    public decimal Discount { get; set; }
+    public decimal Tax { get; set; }
+    public decimal Total { get; set; }
+    public string Status { get; set; } = null!;
+    public DateTime CreatedAt { get; set; }
+    public DateTime ExpiresAt { get; set; }
+    public List<PendingSaleItemDto> Items { get; set; } = [];
+}
+
+public class PendingSaleItemDto
+{
+    public Guid DrugId { get; set; }
+    public string DrugName { get; set; } = null!;
+    public string? BrandName { get; set; }
+    public int Quantity { get; set; }
+    public decimal UnitPrice { get; set; }
+    public decimal Subtotal { get; set; }
+}
+
 public class SaleDto
 {
     public Guid Id { get; set; }
     public string ReceiptNo { get; set; } = null!;
     public string? PatientId { get; set; }
+    public string? PatientName { get; set; }
     public decimal Subtotal { get; set; }
     public decimal Discount { get; set; }
     public decimal Tax { get; set; }
     public decimal Total { get; set; }
     public string PaymentMethod { get; set; } = null!;
     public string CashierId { get; set; } = null!;
+    public string? CashierFirstName { get; set; }
     public string Status { get; set; } = null!;
     public DateTime CreatedAt { get; set; }
     public List<SaleItemDto> Items { get; set; } = [];
@@ -34,6 +65,7 @@ public class SaleItemDto
 {
     public Guid DrugId { get; set; }
     public string DrugName { get; set; } = null!;
+    public string? BrandName { get; set; }
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
     public decimal Subtotal { get; set; }

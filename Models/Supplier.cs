@@ -22,7 +22,7 @@ public class PurchaseOrder
     public string PoNumber { get; set; } = null!;
     public DateTime OrderDate { get; set; } = DateTime.UtcNow;
     public DateTime? ExpectedDelivery { get; set; }
-    public string Status { get; set; } = "draft";
+    public string Status { get; set; } = "Draft";
     public decimal Total { get; set; }
     public string BranchId { get; set; } = null!;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -37,6 +37,7 @@ public class PurchaseOrderItem
     public Guid OrderId { get; set; }
     public Guid DrugId { get; set; }
     public string DrugName { get; set; } = null!;
+    public string? BrandName { get; set; }
     public int Quantity { get; set; }
     public decimal UnitCost { get; set; }
     public decimal Subtotal { get; set; }

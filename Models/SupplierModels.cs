@@ -25,6 +25,7 @@ public class PurchaseOrderItemRequest
 {
     public Guid DrugId { get; set; }
     public string DrugName { get; set; } = null!;
+    public string? BrandName { get; set; }
     public int Quantity { get; set; }
     public decimal UnitCost { get; set; }
 }
@@ -41,6 +42,7 @@ public class PurchaseOrderItemDto
     public Guid Id { get; set; }
     public Guid DrugId { get; set; }
     public string DrugName { get; set; } = null!;
+    public string? BrandName { get; set; }
     public int Quantity { get; set; }
     public decimal UnitCost { get; set; }
     public decimal Subtotal { get; set; }

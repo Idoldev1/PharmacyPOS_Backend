@@ -4,7 +4,7 @@ namespace POS.API.Services.Contracts;
 
 public interface IPrescriptionService
 {
-    Task<OperationResult<PrescriptionListResult>> GetPrescriptionsAsync(string? status, int page, int pageSize, string branchId);
+    Task<OperationResult<PrescriptionListResult>> GetPrescriptionsAsync(string? status, string? query, int page, int pageSize, string branchId);
     Task<OperationResult<PrescriptionDto>> GetByIdAsync(Guid id);
     Task<int> CountByStatusAsync(string status, string branchId);
     Task<OperationResult<PrescriptionDto>> CreateAsync(string branchId, CreatePrescriptionRequest request);

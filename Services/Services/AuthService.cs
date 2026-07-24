@@ -17,25 +17,28 @@ public class AuthService : IAuthService
     private readonly JwtSettings _jwtSettings;
     private readonly UserManager<UserRecord> _userManager;
     private readonly SignInManager<UserRecord> _signInManager;
-    private readonly RoleManager<IdentityRole> _roleManager;
     private readonly IRefreshTokenRepository _refreshTokenRepository;
     private readonly IPasswordResetRepository _passwordResetRepository;
+    private readonly IOtpRepository _otpRepository;
+    private readonly IEmailService _emailService;
     private readonly ILogger<AuthService> _logger;
 
     public AuthService(
         UserManager<UserRecord> userManager,
         SignInManager<UserRecord> signInManager,
-        RoleManager<IdentityRole> roleManager,
         IRefreshTokenRepository refreshTokenRepository,
         IPasswordResetRepository passwordResetRepository,
+        IOtpRepository otpRepository,
+        IEmailService emailService,
         IOptions<JwtSettings> jwtOptions,
         ILogger<AuthService> logger)
     {
         _userManager = userManager;
         _signInManager = signInManager;
-        _roleManager = roleManager;
         _refreshTokenRepository = refreshTokenRepository;
         _passwordResetRepository = passwordResetRepository;
+        _otpRepository = otpRepository;
+        _emailService = emailService;
         _jwtSettings = jwtOptions.Value;
         _logger = logger;
     }
@@ -45,12 +48,11 @@ public class AuthService : IAuthService
         _logger.LogInformation("Login attempt for username {Username}", request.Username);
 
         var user = await _userManager.FindByNameAsync(request.Username);
-        if (user is null)
+        if (user is null || !string.Equals(user.UserName, request.Username, StringComparison.Ordinal))
         {
-            _logger.LogWarning("Login failed: user not found for username {Username}", request.Username);
+            _logger.LogWarning("Login failed: user not found or casing mismatch for username {Username}", request.Username);
             return OperationResult<AuthResponse>.Fail("Invalid username or password.");
         }
-
         var result = await _signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: false);
         if (!result.Succeeded)
         {
@@ -67,46 +69,7 @@ public class AuthService : IAuthService
         var authResponse = await CreateAuthResponse(user);
         _logger.LogInformation("Login successful for username {Username}, userId {UserId}", request.Username, user.Id);
         return OperationResult<AuthResponse>.Ok(authResponse);
-    }
 
-    public async Task<OperationResult<AuthResponse>> SignupAsync(SignupRequest request)
-    {
-        _logger.LogInformation("Signup attempt for username {Username}, role {Role}", request.Username, request.Role);
-
-        var normalizedRole = Roles.Normalize(request.Role);
-        if (normalizedRole is null)
-        {
-            var error = "Invalid role.";
-            _logger.LogWarning("Registration rejected for {Email}: invalid role {Role}", request.FirstName, request.Role);
-            return OperationResult<AuthResponse>.Fail(error);
-        }
-
-        var user = new UserRecord
-        {
-            UserName = request.Username,
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            Role = request.Role,
-            BranchId = request.BranchId
-        };
-
-        var result = await _userManager.CreateAsync(user, request.Password);
-        if (!result.Succeeded)
-        {
-            var error = result.Errors.FirstOrDefault()?.Description ?? "Failed to create account.";
-            _logger.LogWarning("Signup failed for username {Username}: {Error}", request.Username, error);
-            return OperationResult<AuthResponse>.Fail(error);
-        }
-
-        if (!await _roleManager.RoleExistsAsync(normalizedRole))
-        {
-            _logger.LogInformation("Creating missing role {Role}", normalizedRole);
-            await _roleManager.CreateAsync(new IdentityRole(normalizedRole));
-        }
-
-        var authResponse = await CreateAuthResponse(user);
-        _logger.LogInformation("Signup successful for username {Username}, userId {UserId}", request.Username, user.Id);
-        return OperationResult<AuthResponse>.Ok(authResponse);
     }
 
     public async Task<OperationResult<AuthResponse>> RefreshTokenAsync(RefreshTokenRequest request)
@@ -231,6 +194,69 @@ public class AuthService : IAuthService
         return OperationResult.Ok();
     }
 
+    public async Task<OperationResult> RequestOtpAsync(RequestOtpRequest request)
+    {
+        _logger.LogInformation("OTP requested for email {Email}", request.Email);
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            _logger.LogWarning("OTP requested for non-existent email {Email}", request.Email);
+            return OperationResult.Ok();
+        }
+
+        var otp = Random.Shared.Next(100000, 999999).ToString();
+
+        await _otpRepository.DeleteByUserIdAsync(user.Id);
+        await _otpRepository.AddAsync(new OtpEntry
+        {
+            UserId = user.Id,
+            Code = otp,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(10)
+        });
+
+        await _emailService.SendOtpAsync(request.Email, otp);
+
+        _logger.LogInformation("OTP sent to email {Email}", request.Email);
+        return OperationResult.Ok();
+    }
+
+    public async Task<OperationResult<VerifyOtpResponse>> VerifyOtpAsync(VerifyOtpRequest request)
+    {
+        _logger.LogInformation("OTP verification attempt for email {Email}", request.Email);
+
+        var user = await _userManager.FindByEmailAsync(request.Email);
+        if (user is null)
+        {
+            _logger.LogWarning("OTP verification failed: email not found {Email}", request.Email);
+            return OperationResult<VerifyOtpResponse>.Fail("Invalid OTP or email.");
+        }
+
+        var entry = await _otpRepository.GetByUserIdAsync(user.Id);
+        if (entry is null || entry.ExpiresAt < DateTime.UtcNow || entry.Code != request.Otp)
+        {
+            _logger.LogWarning("OTP verification failed for userId {UserId}: invalid or expired", user.Id);
+            return OperationResult<VerifyOtpResponse>.Fail("Invalid or expired OTP.");
+        }
+
+        await _otpRepository.DeleteByUserIdAsync(user.Id);
+
+        var resetToken = Convert.ToHexString(RandomNumberGenerator.GetBytes(24));
+        await _passwordResetRepository.AddAsync(new PasswordResetEntry
+        {
+            Token = resetToken,
+            UserId = user.Id,
+            ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ResetTokenMinutes)
+        });
+
+        _logger.LogInformation("OTP verified for userId {UserId}, reset token issued", user.Id);
+        return OperationResult<VerifyOtpResponse>.Ok(new VerifyOtpResponse
+        {
+            ResetToken = resetToken,
+            Message = "OTP verified. You may now reset your password."
+        });
+    }
+
     public async Task<OperationResult<AuthUser>> GetUserAsync(string userId)
     {
         _logger.LogInformation("Retrieving user for userId {UserId}", userId);
@@ -248,7 +274,7 @@ public class AuthService : IAuthService
 
     private async Task<AuthResponse> CreateAuthResponse(UserRecord user)
     {
-        _logger.LogDebug("Creating auth response for userId {UserId}", user.Id);
+        _logger.LogInformation("Creating auth response for userId {UserId}", user.Id);
 
         var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.AccessTokenMinutes);
         var accessToken = GenerateAccessToken(user, expiresAt);
@@ -261,7 +287,7 @@ public class AuthService : IAuthService
             ExpiresAt = DateTime.UtcNow.AddDays(_jwtSettings.RefreshTokenDays)
         });
 
-        _logger.LogDebug("Auth response created for userId {UserId}", user.Id);
+        _logger.LogInformation("Auth response created for userId {UserId}", user.Id);
         return new AuthResponse
         {
             AccessToken = accessToken,
@@ -275,10 +301,12 @@ public class AuthService : IAuthService
     {
         Id = user.Id,
         Username = user.UserName!,
+        Email = user.Email ?? "",
         FirstName = user.FirstName,
         LastName = user.LastName,
         Role = user.Role,
-        BranchId = user.BranchId
+        BranchId = user.BranchId,
+        Permissions = RolePermissions.GetPermissions(user.Role)
     };
 
     private string GenerateAccessToken(UserRecord user, DateTime expiresAt)
@@ -292,6 +320,9 @@ public class AuthService : IAuthService
             new(ClaimTypes.Role, user.Role),
             new("branchId", user.BranchId)
         };
+
+        foreach (var perm in RolePermissions.GetPermissions(user.Role))
+            claims.Add(new Claim("permission", perm));
 
         var token = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,

@@ -18,9 +18,13 @@ public class AppDbContext : IdentityDbContext<UserRecord>
     public DbSet<BranchSettings> BranchSettings => Set<BranchSettings>();
     public DbSet<RefreshTokenEntry> RefreshTokens => Set<RefreshTokenEntry>();
     public DbSet<PasswordResetEntry> PasswordResets => Set<PasswordResetEntry>();
+    public DbSet<OtpEntry> OtpEntries => Set<OtpEntry>();
+    public DbSet<Brand> Brands => Set<Brand>();
     public DbSet<Drug> Drugs => Set<Drug>();
     public DbSet<Sale> Sales => Set<Sale>();
     public DbSet<SaleItem> SaleItems => Set<SaleItem>();
+    public DbSet<PendingSale> PendingSales => Set<PendingSale>();
+    public DbSet<PendingSaleItem> PendingSaleItems => Set<PendingSaleItem>();
     public DbSet<Prescription> Prescriptions => Set<Prescription>();
     public DbSet<PrescriptionLine> PrescriptionLines => Set<PrescriptionLine>();
 
@@ -53,6 +57,29 @@ public class AppDbContext : IdentityDbContext<UserRecord>
             entity.Property(x => x.ExpiresAt).IsRequired();
         });
 
+        modelBuilder.Entity<OtpEntry>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.UserId).IsRequired();
+            entity.Property(x => x.Code).IsRequired().HasMaxLength(6);
+            entity.Property(x => x.ExpiresAt).IsRequired();
+            entity.HasIndex(x => x.UserId);
+        });
+
+        modelBuilder.Entity<Brand>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Name).IsRequired().HasMaxLength(150);
+            entity.HasIndex(x => x.Name).IsUnique();
+            entity.HasData(new Brand
+            {
+                Id = Brand.UnspecifiedId,
+                Name = "Unspecified",
+                IsActive = true,
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            });
+        });
+
         modelBuilder.Entity<Drug>(entity =>
         {
             entity.HasKey(x => x.Id);
@@ -62,7 +89,9 @@ public class AppDbContext : IdentityDbContext<UserRecord>
             entity.Property(x => x.BranchId).IsRequired().HasMaxLength(64);
             entity.Property(x => x.UnitCost).HasColumnType("decimal(18,2)");
             entity.Property(x => x.SellingPrice).HasColumnType("decimal(18,2)");
+            entity.HasOne(x => x.Brand).WithMany().HasForeignKey(x => x.BrandId).OnDelete(DeleteBehavior.Restrict);
             entity.HasIndex(x => new { x.BranchId, x.IsActive });
+            entity.HasIndex(x => x.BrandId);
         });
 
         modelBuilder.Entity<Sale>(entity =>
@@ -85,6 +114,32 @@ public class AppDbContext : IdentityDbContext<UserRecord>
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.DrugName).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.BrandName).HasMaxLength(150);
+            entity.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Subtotal).HasColumnType("decimal(18,2)");
+        });
+
+        modelBuilder.Entity<PendingSale>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Code).IsRequired().HasMaxLength(6);
+            entity.Property(x => x.InitiatedByUserId).IsRequired();
+            entity.Property(x => x.BranchId).IsRequired().HasMaxLength(64);
+            entity.Property(x => x.Status).IsRequired().HasMaxLength(20);
+            entity.Property(x => x.Subtotal).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Discount).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Tax).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Total).HasColumnType("decimal(18,2)");
+            entity.HasMany(x => x.Items).WithOne(x => x.PendingSale).HasForeignKey(x => x.PendingSaleId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasIndex(x => new { x.BranchId, x.Status });
+            entity.HasIndex(x => x.Code).IsUnique().HasFilter("[Status] = 'pending'");
+        });
+
+        modelBuilder.Entity<PendingSaleItem>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.DrugName).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.BrandName).HasMaxLength(150);
             entity.Property(x => x.UnitPrice).HasColumnType("decimal(18,2)");
             entity.Property(x => x.Subtotal).HasColumnType("decimal(18,2)");
         });
@@ -150,6 +205,7 @@ public class AppDbContext : IdentityDbContext<UserRecord>
         {
             entity.HasKey(x => x.Id);
             entity.Property(x => x.DrugName).IsRequired().HasMaxLength(200);
+            entity.Property(x => x.BrandName).HasMaxLength(150);
             entity.Property(x => x.UnitCost).HasColumnType("decimal(18,2)");
             entity.Property(x => x.Subtotal).HasColumnType("decimal(18,2)");
         });

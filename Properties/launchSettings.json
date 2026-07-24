@@ -14,7 +14,12 @@
         "JwtSettings__Issuer": "PHARMACYPOS",
         "JwtSettings__Audience": "pos-client",
         "ClientSettings__BaseUrl": "http://localhost:5173",
-        "ClientSettings__AllowedOrigins": "http://localhost:5173"
+        "ClientSettings__AllowedOrigins": "http://localhost:5173",
+        "SEED_ADMIN": "true",
+        "SEED_ADMIN_USERNAME": "admin",
+        "SEED_ADMIN_PASSWORD": "Admin@123",
+        "SEED_ADMIN_EMAIL": "admin@pharmacypos.com",
+        "SEED_ADMIN_BRANCHID": "HQ"
       }
     }
   }

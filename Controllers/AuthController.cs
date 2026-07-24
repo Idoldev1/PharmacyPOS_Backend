@@ -20,22 +20,6 @@ public class AuthController : ControllerBase
     }
 
     [AllowAnonymous]
-    [HttpPost("signup")]
-    public async Task<IActionResult> Signup([FromBody] SignupRequest request)
-    {
-        _logger.LogInformation("POST /api/auth/signup called");
-        var result = await _authService.SignupAsync(request);
-        if (!result.Success)
-        {
-            _logger.LogWarning("Signup failed for username {Username}: {Error}", request.Username, result.ErrorMessage);
-            return StatusCode(result.StatusCode, new { error = result.ErrorMessage });
-        }
-
-        _logger.LogInformation("Signup completed for username {Username}", request.Username);
-        return Ok(result.Payload);
-    }
-
-    [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
@@ -96,6 +80,38 @@ public class AuthController : ControllerBase
         }
 
         _logger.LogInformation("Password reset request completed for username {Username}", request.Username);
+        return Ok(result.Payload);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("request-otp")]
+    public async Task<IActionResult> RequestOtp([FromBody] RequestOtpRequest request)
+    {
+        _logger.LogInformation("POST /api/auth/request-otp called");
+        var result = await _authService.RequestOtpAsync(request);
+        if (!result.Success)
+        {
+            _logger.LogWarning("OTP request failed: {Error}", result.ErrorMessage);
+            return StatusCode(result.StatusCode, new { error = result.ErrorMessage });
+        }
+
+        _logger.LogInformation("OTP request completed");
+        return Ok(new { message = "If that email is registered, an OTP has been sent." });
+    }
+
+    [AllowAnonymous]
+    [HttpPost("verify-otp")]
+    public async Task<IActionResult> VerifyOtp([FromBody] VerifyOtpRequest request)
+    {
+        _logger.LogInformation("POST /api/auth/verify-otp called");
+        var result = await _authService.VerifyOtpAsync(request);
+        if (!result.Success)
+        {
+            _logger.LogWarning("OTP verification failed: {Error}", result.ErrorMessage);
+            return StatusCode(result.StatusCode, new { error = result.ErrorMessage });
+        }
+
+        _logger.LogInformation("OTP verification completed");
         return Ok(result.Payload);
     }
 

@@ -7,16 +7,6 @@ public class LoginRequest
     public string Role { get; set; } = null!;
 }
 
-public class SignupRequest
-{
-    public string Username { get; set; } = null!;
-    public string Password { get; set; } = null!;
-    public string FirstName { get; set; } = null!;
-    public string LastName { get; set; } = null!;
-    public string Role { get; set; } = "Pharmacist";
-    public string BranchId { get; set; } = "HQ";
-}
-
 public class RefreshTokenRequest
 {
     public string Token { get; set; } = null!;
@@ -28,6 +18,23 @@ public class RequestPasswordResetRequest
 }
 
 public class RequestPasswordResetResponse
+{
+    public string ResetToken { get; set; } = null!;
+    public string Message { get; set; } = null!;
+}
+
+public class RequestOtpRequest
+{
+    public string Email { get; set; } = null!;
+}
+
+public class VerifyOtpRequest
+{
+    public string Email { get; set; } = null!;
+    public string Otp { get; set; } = null!;
+}
+
+public class VerifyOtpResponse
 {
     public string ResetToken { get; set; } = null!;
     public string Message { get; set; } = null!;
@@ -57,8 +64,10 @@ public class AuthUser
 {
     public string Id { get; set; } = null!;
     public string Username { get; set; } = null!;
+    public string Email { get; set; } = null!;
     public string FirstName { get; set; } = null!;
     public string LastName { get; set; } = null!;
     public string Role { get; set; } = null!;
     public string BranchId { get; set; } = null!;
+    public string[] Permissions { get; set; } = [];
 }
